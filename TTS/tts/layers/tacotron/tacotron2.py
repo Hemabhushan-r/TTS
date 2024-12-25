@@ -26,8 +26,10 @@ class ConvBNBlock(nn.Module):
         super().__init__()
         assert (kernel_size - 1) % 2 == 0
         padding = (kernel_size - 1) // 2
-        self.convolution1d = nn.Conv1d(in_channels, out_channels, kernel_size, padding=padding)
-        self.batch_normalization = nn.BatchNorm1d(out_channels, momentum=0.1, eps=1e-5)
+        self.convolution1d = nn.Conv1d(
+            in_channels, out_channels, kernel_size, padding=padding)
+        self.batch_normalization = nn.BatchNorm1d(
+            out_channels, momentum=0.1, eps=1e-5)
         self.dropout = nn.Dropout(p=0.5)
         if activation == "relu":
             self.activation = nn.ReLU()
@@ -58,10 +60,13 @@ class Postnet(nn.Module):
     def __init__(self, in_out_channels, num_convs=5):
         super().__init__()
         self.convolutions = nn.ModuleList()
-        self.convolutions.append(ConvBNBlock(in_out_channels, 512, kernel_size=5, activation="tanh"))
+        self.convolutions.append(ConvBNBlock(
+            in_out_channels, 512, kernel_size=5, activation="tanh"))
         for _ in range(1, num_convs - 1):
-            self.convolutions.append(ConvBNBlock(512, 512, kernel_size=5, activation="tanh"))
-        self.convolutions.append(ConvBNBlock(512, in_out_channels, kernel_size=5, activation=None))
+            self.convolutions.append(ConvBNBlock(
+                512, 512, kernel_size=5, activation="tanh"))
+        self.convolutions.append(ConvBNBlock(
+            512, in_out_channels, kernel_size=5, activation=None))
 
     def forward(self, x):
         o = x
@@ -85,7 +90,8 @@ class Encoder(nn.Module):
         super().__init__()
         self.convolutions = nn.ModuleList()
         for _ in range(3):
-            self.convolutions.append(ConvBNBlock(in_out_channels, in_out_channels, 5, "relu"))
+            self.convolutions.append(ConvBNBlock(
+                in_out_channels, in_out_channels, 5, "relu"))
         self.lstm = nn.LSTM(
             in_out_channels, int(in_out_channels / 2), num_layers=1, batch_first=True, bias=True, bidirectional=True
         )
@@ -96,8 +102,10 @@ class Encoder(nn.Module):
         for layer in self.convolutions:
             o = layer(o)
         o = o.transpose(1, 2)
-        o = nn.utils.rnn.pack_padded_sequence(o, input_lengths.cpu(), batch_first=True)
+        o = nn.utils.rnn.pack_padded_sequence(
+            o, input_lengths.cpu(), batch_first=True)
         self.lstm.flatten_parameters()
+        o = o.contiguous()
         o, _ = self.lstm(o)
         o, _ = nn.utils.rnn.pad_packed_sequence(o, batch_first=True)
         return o
@@ -177,10 +185,12 @@ class Decoder(nn.Module):
         # memory -> |Prenet| -> processed_memory
         prenet_dim = self.frame_channels
         self.prenet = Prenet(
-            prenet_dim, prenet_type, prenet_dropout, out_features=[self.prenet_dim, self.prenet_dim], bias=False
+            prenet_dim, prenet_type, prenet_dropout, out_features=[
+                self.prenet_dim, self.prenet_dim], bias=False
         )
 
-        self.attention_rnn = nn.LSTMCell(self.prenet_dim + in_channels, self.query_dim, bias=True)
+        self.attention_rnn = nn.LSTMCell(
+            self.prenet_dim + in_channels, self.query_dim, bias=True)
 
         self.attention = init_attn(
             attn_type=attn_type,
@@ -198,13 +208,16 @@ class Decoder(nn.Module):
             attn_K=attn_K,
         )
 
-        self.decoder_rnn = nn.LSTMCell(self.query_dim + in_channels, self.decoder_rnn_dim, bias=True)
+        self.decoder_rnn = nn.LSTMCell(
+            self.query_dim + in_channels, self.decoder_rnn_dim, bias=True)
 
-        self.linear_projection = Linear(self.decoder_rnn_dim + in_channels, self.frame_channels * self.r_init)
+        self.linear_projection = Linear(
+            self.decoder_rnn_dim + in_channels, self.frame_channels * self.r_init)
 
         self.stopnet = nn.Sequential(
             nn.Dropout(0.1),
-            Linear(self.decoder_rnn_dim + self.frame_channels * self.r_init, 1, bias=True, init_gain="sigmoid"),
+            Linear(self.decoder_rnn_dim + self.frame_channels *
+                   self.r_init, 1, bias=True, init_gain="sigmoid"),
         )
         self.memory_truncated = None
 
@@ -213,18 +226,24 @@ class Decoder(nn.Module):
 
     def get_go_frame(self, inputs):
         B = inputs.size(0)
-        memory = torch.zeros(1, device=inputs.device).repeat(B, self.frame_channels * self.r)
+        memory = torch.zeros(1, device=inputs.device).repeat(
+            B, self.frame_channels * self.r)
         return memory
 
     def _init_states(self, inputs, mask, keep_states=False):
         B = inputs.size(0)
         # T = inputs.size(1)
         if not keep_states:
-            self.query = torch.zeros(1, device=inputs.device).repeat(B, self.query_dim)
-            self.attention_rnn_cell_state = torch.zeros(1, device=inputs.device).repeat(B, self.query_dim)
-            self.decoder_hidden = torch.zeros(1, device=inputs.device).repeat(B, self.decoder_rnn_dim)
-            self.decoder_cell = torch.zeros(1, device=inputs.device).repeat(B, self.decoder_rnn_dim)
-            self.context = torch.zeros(1, device=inputs.device).repeat(B, self.encoder_embedding_dim)
+            self.query = torch.zeros(
+                1, device=inputs.device).repeat(B, self.query_dim)
+            self.attention_rnn_cell_state = torch.zeros(
+                1, device=inputs.device).repeat(B, self.query_dim)
+            self.decoder_hidden = torch.zeros(
+                1, device=inputs.device).repeat(B, self.decoder_rnn_dim)
+            self.decoder_cell = torch.zeros(
+                1, device=inputs.device).repeat(B, self.decoder_rnn_dim)
+            self.context = torch.zeros(1, device=inputs.device).repeat(
+                B, self.encoder_embedding_dim)
         self.inputs = inputs
         self.processed_inputs = self.attention.preprocess_inputs(inputs)
         self.mask = mask
@@ -250,8 +269,8 @@ class Decoder(nn.Module):
 
     def _update_memory(self, memory):
         if len(memory.shape) == 2:
-            return memory[:, self.frame_channels * (self.r - 1) :]
-        return memory[:, :, self.frame_channels * (self.r - 1) :]
+            return memory[:, self.frame_channels * (self.r - 1):]
+        return memory[:, :, self.frame_channels * (self.r - 1):]
 
     def decode(self, memory):
         """
@@ -265,21 +284,25 @@ class Decoder(nn.Module):
         self.query, self.attention_rnn_cell_state = self.attention_rnn(
             query_input, (self.query, self.attention_rnn_cell_state)
         )
-        self.query = F.dropout(self.query, self.p_attention_dropout, self.training)
+        self.query = F.dropout(
+            self.query, self.p_attention_dropout, self.training)
         self.attention_rnn_cell_state = F.dropout(
             self.attention_rnn_cell_state, self.p_attention_dropout, self.training
         )
         # B x D_en
-        self.context = self.attention(self.query, self.inputs, self.processed_inputs, self.mask)
+        self.context = self.attention(
+            self.query, self.inputs, self.processed_inputs, self.mask)
         # B x (D_en + D_attn_rnn)
         decoder_rnn_input = torch.cat((self.query, self.context), -1)
         # self.decoder_hidden and self.decoder_cell: B x D_decoder_rnn
         self.decoder_hidden, self.decoder_cell = self.decoder_rnn(
             decoder_rnn_input, (self.decoder_hidden, self.decoder_cell)
         )
-        self.decoder_hidden = F.dropout(self.decoder_hidden, self.p_decoder_dropout, self.training)
+        self.decoder_hidden = F.dropout(
+            self.decoder_hidden, self.p_decoder_dropout, self.training)
         # B x (D_decoder_rnn + D_en)
-        decoder_hidden_context = torch.cat((self.decoder_hidden, self.context), dim=1)
+        decoder_hidden_context = torch.cat(
+            (self.decoder_hidden, self.context), dim=1)
         # B x (self.r * self.frame_channels)
         decoder_output = self.linear_projection(decoder_hidden_context)
         # B x (D_decoder_rnn + (self.r * self.frame_channels))
@@ -323,7 +346,8 @@ class Decoder(nn.Module):
             stop_tokens += [stop_token.squeeze(1)]
             alignments += [attention_weights]
 
-        outputs, stop_tokens, alignments = self._parse_outputs(outputs, stop_tokens, alignments)
+        outputs, stop_tokens, alignments = self._parse_outputs(
+            outputs, stop_tokens, alignments)
         return outputs, alignments, stop_tokens
 
     def inference(self, inputs):
@@ -356,13 +380,15 @@ class Decoder(nn.Module):
             if stop_token > self.stop_threshold and t > inputs.shape[0] // 2:
                 break
             if len(outputs) == self.max_decoder_steps:
-                print(f"   > Decoder stopped with `max_decoder_steps` {self.max_decoder_steps}")
+                print(
+                    f"   > Decoder stopped with `max_decoder_steps` {self.max_decoder_steps}")
                 break
 
             memory = self._update_memory(decoder_output)
             t += 1
 
-        outputs, stop_tokens, alignments = self._parse_outputs(outputs, stop_tokens, alignments)
+        outputs, stop_tokens, alignments = self._parse_outputs(
+            outputs, stop_tokens, alignments)
 
         return outputs, alignments, stop_tokens
 
@@ -395,7 +421,8 @@ class Decoder(nn.Module):
             self.memory_truncated = decoder_output
             t += 1
 
-        outputs, stop_tokens, alignments = self._parse_outputs(outputs, stop_tokens, alignments)
+        outputs, stop_tokens, alignments = self._parse_outputs(
+            outputs, stop_tokens, alignments)
 
         return outputs, alignments, stop_tokens
 
