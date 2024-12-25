@@ -104,10 +104,11 @@ class Encoder(nn.Module):
         o = o.transpose(1, 2)
         o = o.contiguous()
         o = nn.utils.rnn.pack_padded_sequence(
-            o, input_lengths.cpu(), batch_first=True)
+            o, input_lengths.cpu(), batch_first=True, enforce_sorted=False)
         self.lstm.flatten_parameters()
         o, _ = self.lstm(o)
-        o, _ = nn.utils.rnn.pad_packed_sequence(o, batch_first=True)
+        o, _ = nn.utils.rnn.pad_packed_sequence(
+            o, batch_first=True)
         return o
 
     def inference(self, x):
