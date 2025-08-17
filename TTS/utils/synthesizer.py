@@ -1,5 +1,6 @@
 import os
 import time
+from tkinter.constants import NONE
 from typing import List
 
 import numpy as np
@@ -303,6 +304,7 @@ class Synthesizer(nn.Module):
             self.voice_dir = kwargs["voice_dir"]
             kwargs.pop("voice_dir")
         speaker_embedding = None
+        # speaker_id = NONE
         speaker_id = None
         if self.tts_speakers_file or hasattr(self.tts_model.speaker_manager, "name_to_id"):
             if speaker_name and isinstance(speaker_name, str) and not self.tts_config.model == "xtts":

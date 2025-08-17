@@ -273,7 +273,6 @@ class Tacotron2(BaseTacotron):
                 if self.capacitron_vae.capacitron_use_speaker_embedding
                 else None,
             )
-
         if self.num_speakers > 1:
             if not self.use_d_vector_file:
                 embedded_speakers = self.speaker_embedding(aux_input["speaker_ids"])[None]

@@ -341,15 +341,16 @@ class EmbeddingManager(BaseIDManager):
         def _compute(wav_file: str):
             waveform = self.encoder_ap.load_wav(wav_file, sr=self.encoder_ap.sample_rate)
             if not self.encoder_config.model_params.get("use_torch_spec", False):
+                breakpoint()
                 m_input = self.encoder_ap.melspectrogram(waveform)
                 m_input = torch.from_numpy(m_input)
             else:
                 m_input = torch.from_numpy(waveform)
-
             if self.use_cuda:
                 m_input = m_input.cuda()
             m_input = m_input.unsqueeze(0)
-            embedding = self.encoder.compute_embedding(m_input)
+            # embedding = self.encoder.compute_embedding(m_input)
+            embedding = self.encoder(m_input)
             return embedding
 
         if isinstance(wav_file, list):

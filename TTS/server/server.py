@@ -11,6 +11,8 @@ from urllib.parse import parse_qs
 
 from flask import Flask, render_template, render_template_string, request, send_file
 
+sys.path.append('/teamspace/studios/this_studio/TTS')
+
 from TTS.config import load_config
 from TTS.utils.manage import ModelManager
 from TTS.utils.synthesizer import Synthesizer
